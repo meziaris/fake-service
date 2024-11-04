@@ -1,0 +1,18 @@
+ARG GO_VERSION=1.23.0
+FROM golang:${GO_VERSION}-alpine AS builder
+
+WORKDIR /app
+COPY . .
+
+RUN go mod download
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o app
+
+FROM almalinux:9
+ENV APP_USER=appuser
+ENV APP_HOME=/app
+RUN useradd -m -d ${APP_HOME} -s /bin/bash ${APP_USER}
+RUN mkdir -p ${APP_HOME} && chown -R ${APP_USER}:${APP_USER} ${APP_HOME}
+WORKDIR ${APP_HOME}
+COPY --from=builder --chown=${APP_USER}:${APP_USER} /app/app ./app
+USER ${APP_USER}
+CMD ["./app"]
